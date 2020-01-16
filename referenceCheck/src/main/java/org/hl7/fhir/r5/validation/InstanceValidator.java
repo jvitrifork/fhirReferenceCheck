@@ -1961,7 +1961,7 @@ public class InstanceValidator extends BaseValidator implements IResourceValidat
                                 b.append(bt);
                                 if (bt.equals(ft)) {
                                     ok = true;
-                                    if (we!=null && pol.checkValid())
+                                    //if (we!=null && pol.checkValid())
                                         candidateProfiles.add(pr);
                                 }
                             }
@@ -1973,6 +1973,7 @@ public class InstanceValidator extends BaseValidator implements IResourceValidat
                             for (String pr: candidateProfiles) {
                                 profiles.add(pr);
                                 List<ValidationMessage> profileErrors = new ArrayList<ValidationMessage>();
+                                if (we!=null && pol.checkValid())
                                 doResourceProfile(hostContext, we, pr, profileErrors, stack.push(we, -1, null, null), path, element, profile);
 
                                 if (hasErrors(profileErrors))
