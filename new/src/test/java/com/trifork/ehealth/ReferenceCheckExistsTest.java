@@ -12,10 +12,7 @@ import org.hl7.fhir.dstu3.hapi.ctx.HapiWorkerContext;
 import org.hl7.fhir.dstu3.hapi.validation.FhirInstanceValidator;
 import org.hl7.fhir.dstu3.hapi.validation.PrePopulatedValidationSupport;
 import org.hl7.fhir.dstu3.hapi.validation.ValidationSupportChain;
-import org.hl7.fhir.dstu3.model.Communication;
-import org.hl7.fhir.dstu3.model.Patient;
-import org.hl7.fhir.dstu3.model.Reference;
-import org.hl7.fhir.dstu3.model.StructureDefinition;
+import org.hl7.fhir.dstu3.model.*;
 import org.hl7.fhir.r5.utils.IResourceValidator;
 import org.junit.jupiter.api.Test;
 
@@ -33,8 +30,8 @@ public class ReferenceCheckExistsTest {
     static class ReferenceFactory
     {
 
-        public static Reference createReference(Class<Patient> patientClass) {
-            return new Reference(new Patient().setId("1"));
+        public static Reference createReference(Class<? extends DomainResource> clazz, int id) {
+            return new Reference(new Patient().setId(id + ""));
         }
     }
 
@@ -46,7 +43,7 @@ public class ReferenceCheckExistsTest {
     @Test
     public void validateReferenceType_withNotSupportedReferencedType() {
         // Arrange
-        Reference notSupportedReference = ReferenceFactory.createReference(Patient.class);
+        Reference notSupportedReference = ReferenceFactory.createReference(Patient.class, 3);
 
         Communication communication = new Communication();
         communication.setStatus(Communication.CommunicationStatus.COMPLETED);
@@ -54,6 +51,7 @@ public class ReferenceCheckExistsTest {
 
         FhirInstanceValidator fhirInstanceValidator = new FhirInstanceValidator();
         fhirInstanceValidator.setValidationSupport(defaultProfileValidationSupport);
+        fhirInstanceValidator.setAssumeValidRestReferences(true);
 
         FhirValidator fhirValidator = FHIR_CONTEXT.newValidator();
         fhirValidator.registerValidatorModule(fhirInstanceValidator);
@@ -86,37 +84,37 @@ public class ReferenceCheckExistsTest {
 
         // Assert
         assertThat(validationResult.getMessages().size()).isEqualTo(1);
-        assertThat(getSingleMessage(validationResult)).isEqualTo("Invalid Resource target type. Found Patient, but expected one of (PlanDefinition, ActivityDefinition)");
+        assertThat(getSingleMessage(validationResult)).isEqualTo("Invalid Resource target type. Found Patient, but expected one of ([PlanDefinition, ActivityDefinition])");
     }
 
     @Test
     public void validateReferenceAggregationMode_Referenced_withContained() {
         // Arrange
         String differentialSubjectReferenced = "<StructureDefinition xmlns=\"http://hl7.org/fhir\">\n" +
-            "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
-            "<name value=\"MyCommunication\"/>\n" +
-            "<status value=\"draft\"/>\n" +
-            "<fhirVersion value=\"3.0.1\"/>\n" +
-            "<kind value=\"resource\"/>\n" +
-            "<abstract value=\"false\"/>\n" +
-            "<type value=\"Communication\"/>\n" +
-            "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
-            "<derivation value=\"constraint\"/>\n" +
-            " <differential>\n" +
-            " <element id=\"Communication.subject\">\n" +
-            "<path value=\"Communication.subject\"/>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
-            "<aggregation value=\"referenced\"/>\n" +
-            "</type>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
-            "</type>\n" +
-            "</element>\n" +
-            "</differential>\n" +
-            "</StructureDefinition>";
+                "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
+                "<name value=\"MyCommunication\"/>\n" +
+                "<status value=\"draft\"/>\n" +
+                "<fhirVersion value=\"3.0.1\"/>\n" +
+                "<kind value=\"resource\"/>\n" +
+                "<abstract value=\"false\"/>\n" +
+                "<type value=\"Communication\"/>\n" +
+                "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
+                "<derivation value=\"constraint\"/>\n" +
+                " <differential>\n" +
+                " <element id=\"Communication.subject\">\n" +
+                "<path value=\"Communication.subject\"/>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
+                "<aggregation value=\"referenced\"/>\n" +
+                "</type>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
+                "</type>\n" +
+                "</element>\n" +
+                "</differential>\n" +
+                "</StructureDefinition>";
 
         Patient containedPatient = new Patient();
         containedPatient.setActive(true);
@@ -136,40 +134,39 @@ public class ReferenceCheckExistsTest {
         assertThat(getSingleMessage(validationResult)).isEqualTo("Reference is contained which isn't supported by the specified aggregation mode(s) for the reference");
     }
 
-
     @Test
     public void validateReferenceAggregationMode_Contained_withReference() {
         // Arrange
         String differentialSubjectReferenced = "<StructureDefinition xmlns=\"http://hl7.org/fhir\">\n" +
-            "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
-            "<name value=\"MyCommunication\"/>\n" +
-            "<status value=\"draft\"/>\n" +
-            "<fhirVersion value=\"3.0.1\"/>\n" +
-            "<kind value=\"resource\"/>\n" +
-            "<abstract value=\"false\"/>\n" +
-            "<type value=\"Communication\"/>\n" +
-            "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
-            "<derivation value=\"constraint\"/>\n" +
-            " <differential>\n" +
-            " <element id=\"Communication.subject\">\n" +
-            "<path value=\"Communication.subject\"/>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
-            "<aggregation value=\"contained\"/>\n" +
-            "</type>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
-            "</type>\n" +
-            "</element>\n" +
-            "</differential>\n" +
-            "</StructureDefinition>";
+                "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
+                "<name value=\"MyCommunication\"/>\n" +
+                "<status value=\"draft\"/>\n" +
+                "<fhirVersion value=\"3.0.1\"/>\n" +
+                "<kind value=\"resource\"/>\n" +
+                "<abstract value=\"false\"/>\n" +
+                "<type value=\"Communication\"/>\n" +
+                "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
+                "<derivation value=\"constraint\"/>\n" +
+                " <differential>\n" +
+                " <element id=\"Communication.subject\">\n" +
+                "<path value=\"Communication.subject\"/>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
+                "<aggregation value=\"contained\"/>\n" +
+                "</type>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
+                "</type>\n" +
+                "</element>\n" +
+                "</differential>\n" +
+                "</StructureDefinition>";
 
         Communication communication = new Communication();
         communication.getMeta().addProfile("http://example.org/fhir/StructureDefinition/MyCommunication");
         communication.setStatus(Communication.CommunicationStatus.COMPLETED);
-        communication.setSubject(ReferenceFactory.createReference(Patient.class));
+        communication.setSubject(ReferenceFactory.createReference(Patient.class,2));
 
         FhirValidator fhirValidator = createFhirValidator(differentialSubjectReferenced);
 
@@ -185,36 +182,36 @@ public class ReferenceCheckExistsTest {
     public void validateReferenceAggregationMode_ContainedOrReferenced_withReferenced() {
         // Arrange
         String differentialSubjectReferenced = "<StructureDefinition xmlns=\"http://hl7.org/fhir\">\n" +
-            "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
-            "<name value=\"MyCommunication\"/>\n" +
-            "<status value=\"draft\"/>\n" +
-            "<fhirVersion value=\"3.0.1\"/>\n" +
-            "<kind value=\"resource\"/>\n" +
-            "<abstract value=\"false\"/>\n" +
-            "<type value=\"Communication\"/>\n" +
-            "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
-            "<derivation value=\"constraint\"/>\n" +
-            " <differential>\n" +
-            " <element id=\"Communication.subject\">\n" +
-            "<path value=\"Communication.subject\"/>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
-            "<aggregation value=\"contained\"/>\n" +
-            "<aggregation value=\"referenced\"/>\n" +
-            "</type>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
-            "</type>\n" +
-            "</element>\n" +
-            "</differential>\n" +
-            "</StructureDefinition>";
+                "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
+                "<name value=\"MyCommunication\"/>\n" +
+                "<status value=\"draft\"/>\n" +
+                "<fhirVersion value=\"3.0.1\"/>\n" +
+                "<kind value=\"resource\"/>\n" +
+                "<abstract value=\"false\"/>\n" +
+                "<type value=\"Communication\"/>\n" +
+                "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
+                "<derivation value=\"constraint\"/>\n" +
+                " <differential>\n" +
+                " <element id=\"Communication.subject\">\n" +
+                "<path value=\"Communication.subject\"/>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
+                "<aggregation value=\"contained\"/>\n" +
+                "<aggregation value=\"referenced\"/>\n" +
+                "</type>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
+                "</type>\n" +
+                "</element>\n" +
+                "</differential>\n" +
+                "</StructureDefinition>";
 
         Communication communication = new Communication();
         communication.getMeta().addProfile("http://example.org/fhir/StructureDefinition/MyCommunication");
         communication.setStatus(Communication.CommunicationStatus.COMPLETED);
-        communication.setSubject(ReferenceFactory.createReference(Patient.class));
+        communication.setSubject(ReferenceFactory.createReference(Patient.class,3));
 
         FhirValidator fhirValidator = createFhirValidator(differentialSubjectReferenced);
 
@@ -228,32 +225,32 @@ public class ReferenceCheckExistsTest {
     @Test
     public void validateReferenceAggregationMode_ContainedOrReferenced_withContained() {
         // Arrange
-        String structureDefinition = "<StructureDefinition xmlns=\"http://hl7.org/fhir\">\n" +
-            "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
-            "<name value=\"MyCommunication\"/>\n" +
-            "<status value=\"draft\"/>\n" +
-            "<fhirVersion value=\"3.0.1\"/>\n" +
-            "<kind value=\"resource\"/>\n" +
-            "<abstract value=\"false\"/>\n" +
-            "<type value=\"Communication\"/>\n" +
-            "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
-            "<derivation value=\"constraint\"/>\n" +
-            " <differential>\n" +
-            " <element id=\"Communication.subject\">\n" +
-            "<path value=\"Communication.subject\"/>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
-            "<aggregation value=\"contained\"/>\n" +
-            "<aggregation value=\"referenced\"/>\n" +
-            "</type>\n" +
-            " <type>\n" +
-            "<code value=\"Reference\"/>\n" +
-            "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
-            "</type>\n" +
-            "</element>\n" +
-            "</differential>\n" +
-            "</StructureDefinition>";
+        String differentialSubjectReferenced = "<StructureDefinition xmlns=\"http://hl7.org/fhir\">\n" +
+                "<url value=\"http://example.org/fhir/StructureDefinition/MyCommunication\"/>\n" +
+                "<name value=\"MyCommunication\"/>\n" +
+                "<status value=\"draft\"/>\n" +
+                "<fhirVersion value=\"3.0.1\"/>\n" +
+                "<kind value=\"resource\"/>\n" +
+                "<abstract value=\"false\"/>\n" +
+                "<type value=\"Communication\"/>\n" +
+                "<baseDefinition value=\"http://hl7.org/fhir/StructureDefinition/Communication\"/>\n" +
+                "<derivation value=\"constraint\"/>\n" +
+                " <differential>\n" +
+                " <element id=\"Communication.subject\">\n" +
+                "<path value=\"Communication.subject\"/>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Patient\"/>\n" +
+                "<aggregation value=\"contained\"/>\n" +
+                "<aggregation value=\"referenced\"/>\n" +
+                "</type>\n" +
+                " <type>\n" +
+                "<code value=\"Reference\"/>\n" +
+                "<targetProfile value=\"http://hl7.org/fhir/StructureDefinition/Group\"/>\n" +
+                "</type>\n" +
+                "</element>\n" +
+                "</differential>\n" +
+                "</StructureDefinition>";
 
         Patient containedPatient = new Patient();
         containedPatient.setActive(true);
@@ -263,7 +260,7 @@ public class ReferenceCheckExistsTest {
         communication.setStatus(Communication.CommunicationStatus.COMPLETED);
         communication.setSubject(new Reference(containedPatient));
 
-        FhirValidator fhirValidator = createFhirValidator(structureDefinition);
+        FhirValidator fhirValidator = createFhirValidator(differentialSubjectReferenced);
 
         // Act
         ValidationResult validationResult = fhirValidator.validateWithResult(communication);
@@ -272,14 +269,15 @@ public class ReferenceCheckExistsTest {
         assertThat(validationResult.getMessages().isEmpty()).isTrue();
     }
 
-    private FhirValidator createFhirValidator(String structureDefinitionWithDifferential) {
+    private FhirValidator createFhirValidator(String differentialActivityDefinitionReferenced) {
         PrePopulatedValidationSupport customValidationSupport = new PrePopulatedValidationSupport();
-        customValidationSupport.addStructureDefinition(createSnapshot(FHIR_CONTEXT, structureDefinitionWithDifferential));
+        customValidationSupport.addStructureDefinition(createSnapshot(FHIR_CONTEXT, differentialActivityDefinitionReferenced));
 
         FhirInstanceValidator fhirInstanceValidator = new FhirInstanceValidator();
         fhirInstanceValidator.setNoTerminologyChecks(false);
         fhirInstanceValidator.setAnyExtensionsAllowed(true);
         fhirInstanceValidator.setErrorForUnknownProfiles(true);
+        fhirInstanceValidator.setAssumeValidRestReferences(true);
         fhirInstanceValidator.setBestPracticeWarningLevel(IResourceValidator.BestPracticeWarningLevel.Error);
         fhirInstanceValidator.setValidationSupport(new ValidationSupportChain(defaultProfileValidationSupport, customValidationSupport));
 
@@ -288,8 +286,8 @@ public class ReferenceCheckExistsTest {
         return fhirValidator;
     }
 
-    private StructureDefinition createSnapshot(FhirContext fhirContext, String structureDefinitionWithDifferential) {
-        StructureDefinition structureDefinition = fhirContext.newXmlParser().parseResource(StructureDefinition.class, structureDefinitionWithDifferential);
+    private StructureDefinition createSnapshot(FhirContext fhirContext, String differential) {
+        StructureDefinition structureDefinition = fhirContext.newXmlParser().parseResource(StructureDefinition.class, differential);
         StructureDefinition baseStructureDefinition = defaultProfileValidationSupport.fetchStructureDefinition(fhirContext, structureDefinition.getBaseDefinition());
 
         IWorkerContext workerContext = new HapiWorkerContext(fhirContext, defaultProfileValidationSupport);
