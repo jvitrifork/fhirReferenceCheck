@@ -17,7 +17,7 @@
 
   <properties>
 
-    <fhir.version>4.1.0</fhir.version>
+    <fhir.version>5.4.0</fhir.version>
   </properties>
 
   <repositories>
